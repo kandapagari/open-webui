@@ -63,6 +63,32 @@ services:
       - host.docker.internal:host-gateway
     restart: unless-stopped
 
+
+  comfy_ui:
+    init: true
+    container_name: comfyui
+    network_mode: "host"
+    tty: true
+    build:
+      context: ./ComfyUI
+      dockerfile: Dockerfile
+    volumes:
+      - ./ComfyUI/models:/code/models
+    ports:
+      - 8188:8188
+    environment:
+      - CLI_ARGS=
+    security_opt:
+      - "label=type:nvidia_container_t"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["1"]
+              capabilities: [gpu]
+    entrypoint: ["python", "main.py"]
+
 volumes:
   ollama: {}
   open-webui: {}

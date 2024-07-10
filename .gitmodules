@@ -1,3 +1,6 @@
 [submodule "stable-diffusion-webui"]
 	path = stable-diffusion-webui
 	url = git@github.com:emsi/stable-diffusion-webui.git
+[submodule "ComfyUI"]
+	path = ComfyUI
+	url = git@github.com:kandapagari/ComfyUI.git
