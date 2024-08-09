@@ -19,29 +19,6 @@ services:
               count: ${OLLAMA_GPU_COUNT-all}
               capabilities:
                 - gpu
-  
-  # stable-diffusion-webui:
-  #   image: emsi/stable-diffusion-webui
-  #   build:
-  #     context: ./stable-diffusion-webui/
-  #     dockerfile: ./stable-diffusion-webui/Dockerfile
-  #   ports:
-  #     - "7860"
-  #   environment:
-  #     - NVIDIA_VISIBLE_DEVICES=all
-  #   volumes:
-  #     - ./stable-diffusion-webui:/stable-diffusion-webui
-  #     - home:/root
-  #   command: python3 launch.py --listen
-  #   deploy:
-  #     resources:
-  #       reservations:
-  #         devices:
-  #           - driver: ${OLLAMA_GPU_DRIVER-nvidia}
-  #             count: ${OLLAMA_GPU_COUNT-1}
-  #             capabilities:
-  #               - gpu
-  
 
   open-webui:
     build:
@@ -51,51 +28,80 @@ services:
       dockerfile: Dockerfile
     image: ghcr.io/open-webui/open-webui:${WEBUI_DOCKER_TAG-main}
     container_name: open-webui
+    pull_policy: always
     volumes:
       - open-webui:/app/backend/data
+      - ./data:/data
     depends_on:
       - ollama
-      # - stable-diffusion-webui
     ports:
       - ${OPEN_WEBUI_PORT-3000}:8080
     environment:
       - 'OLLAMA_BASE_URL=http://ollama:11434'
       - 'WEBUI_SECRET_KEY='
-      -  "COMFYUI_BASE_URL=http://host.docker.internal:7860/"
-      -  "ENABLE_IMAGE_GENERATION=True"
-    extra_hosts:
-      - host.docker.internal:host-gateway
+      - COMFYUI_BASE_URL=http://host.docker.internal:7860/
+      - ENABLE_IMAGE_GENERATION=True
+      - CHROMADB_HOST=chromadb
+      - CHROMADB_PORT=8000
     restart: unless-stopped
 
-
-  comfy_ui:
-    init: true
-    container_name: comfyui
-   #  network_mode: "host"
-    tty: true
-    build:
-      context: ./ComfyUI
-      dockerfile: Dockerfile
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: chromadb
+    pull_policy: always
     volumes:
-      - ./ComfyUI/models:/code/models
-    ports:
-      - 7860:7860
+      - ./chroma:/chroma/chroma
     environment:
-      - CLI_ARGS=
-    security_opt:
-      - "label=type:nvidia_container_t"
+      - IS_PERSISTENT=TRUE
+      - PERSIST_DIRECTORY=/chroma/chroma
+      - ANONYMIZED_TELEMETRY=${ANONYMIZED_TELEMETRY:-TRUE}
+    ports:
+      - ${CHROMA_PORT-8000}:8000
     extra_hosts:
       - host.docker.internal:host-gateway
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              device_ids: ["1"]
-              capabilities: [gpu]
-    entrypoint: ["python", "main.py", "--port=7860"]
+
+
+  pipelines:
+    image: ghcr.io/open-webui/pipelines:main
+    container_name: pipelines
+    pull_policy: always
+    ports:
+      - "9099:9099"
+    volumes:
+      - pipelines:/app/pipelines
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+  
+  # comfy_ui:
+  #   init: true
+  #   container_name: comfyui
+  #   #  network_mode: "host"
+  #   tty: true
+  #   build:
+  #     context: ./ComfyUI
+  #     dockerfile: Dockerfile
+  #   volumes:
+  #     - ./ComfyUI/models:/code/models
+  #   ports:
+  #     - 7860:7860
+  #   environment:
+  #     - CLI_ARGS=
+  #   security_opt:
+  #     - "label=type:nvidia_container_t"
+  #   extra_hosts:
+  #     - host.docker.internal:host-gateway
+  #   deploy:
+  #     resources:
+  #       reservations:
+  #         devices:
+  #           - driver: nvidia
+  #             device_ids: [ "1" ]
+  #             capabilities: [ gpu ]
+  #   entrypoint: [ "python", "main.py", "--port=7860" ]
+
 
 volumes:
   ollama: {}
   open-webui: {}
   home: {}
+  pipelines: {}
