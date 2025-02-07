@@ -10,7 +10,7 @@ services:
     ports:
       - ${OLLAMA_PORT-11434}:11434
     environment:
-      - CUDA_VISIBLE_DEVICES=0,1,2,3
+      - CUDA_VISIBLE_DEVICES=2,3
     deploy:
       resources:
         reservations:
@@ -43,6 +43,7 @@ services:
       - ENABLE_IMAGE_GENERATION=True
       - CHROMADB_HOST=chromadb
       - CHROMADB_PORT=8000
+      - ENABLE_ADMIN_CHAT_ACCESS=false
     restart: unless-stopped
 
   chromadb:
@@ -51,6 +52,7 @@ services:
     pull_policy: always
     volumes:
       - ./chroma:/chroma/chroma
+    network_mode: host
     environment:
       - IS_PERSISTENT=TRUE
       - PERSIST_DIRECTORY=/chroma/chroma
@@ -60,18 +62,33 @@ services:
     extra_hosts:
       - host.docker.internal:host-gateway
 
-
-  pipelines:
-    image: ghcr.io/open-webui/pipelines:main
-    container_name: pipelines
-    pull_policy: always
-    ports:
-      - "9099:9099"
+  reverse-proxy:
+    image: nginx:alpine
+    container_name: reverse-proxy
+    tty: true
+    network_mode: host
     volumes:
-      - pipelines:/app/pipelines
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-  
+      - ./proxy/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./proxy/ssl/:/etc/nginx/ssl/:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - open-webui
+      - ollama
+
+  # pipelines:
+  #   image: ghcr.io/open-webui/pipelines:main
+  #   container_name: pipelines
+  #   pull_policy: always
+  #   ports:
+  #     - "9099:9099"
+  #   volumes:
+  #     - pipelines:/app/pipelines
+  #   extra_hosts:
+  #     - "host.docker.internal:host-gateway"
+  #   networks:
+  #     - app-network
   # comfy_ui:
   #   init: true
   #   container_name: comfyui
