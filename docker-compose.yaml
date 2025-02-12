@@ -39,7 +39,7 @@ services:
     environment:
       - 'OLLAMA_BASE_URL=http://ollama:11434'
       - 'WEBUI_SECRET_KEY='
-      - COMFYUI_BASE_URL=http://host.docker.internal:7860/
+      - COMFYUI_BASE_URL=http://host.docker.internal:8188/
       - ENABLE_IMAGE_GENERATION=True
       - CHROMADB_HOST=chromadb
       - CHROMADB_PORT=8000
@@ -67,6 +67,7 @@ services:
     container_name: reverse-proxy
     tty: true
     network_mode: host
+    restart: unless-stopped
     volumes:
       - ./proxy/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./proxy/ssl/:/etc/nginx/ssl/:ro
@@ -89,32 +90,36 @@ services:
   #     - "host.docker.internal:host-gateway"
   #   networks:
   #     - app-network
-  # comfy_ui:
-  #   init: true
-  #   container_name: comfyui
-  #   #  network_mode: "host"
-  #   tty: true
-  #   build:
-  #     context: ./ComfyUI
-  #     dockerfile: Dockerfile
-  #   volumes:
-  #     - ./ComfyUI/models:/code/models
-  #   ports:
-  #     - 7860:7860
-  #   environment:
-  #     - CLI_ARGS=
-  #   security_opt:
-  #     - "label=type:nvidia_container_t"
-  #   extra_hosts:
-  #     - host.docker.internal:host-gateway
-  #   deploy:
-  #     resources:
-  #       reservations:
-  #         devices:
-  #           - driver: nvidia
-  #             device_ids: [ "1" ]
-  #             capabilities: [ gpu ]
-  #   entrypoint: [ "python", "main.py", "--port=7860" ]
+  comfy_ui:
+    init: true
+    container_name: comfyui
+    #  network_mode: "host"
+    tty: true
+    build:
+      context: ./ComfyUI
+      dockerfile: Dockerfile
+    image: ghcr.io/kandapagari/comfyui:master
+    restart: unless-stopped
+    volumes:
+      - ./ComfyUI/models:/code/models
+    ports:
+      - 8188:8188
+    environment:
+      - CUDA_VISIBLE_DEVICES=2,3
+      - CLI_ARGS=
+    security_opt:
+      - "label=type:nvidia_container_t"
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: ${OLLAMA_GPU_DRIVER-nvidia}
+              count: ${OLLAMA_GPU_COUNT-all}
+              capabilities:
+                - gpu
+    entrypoint: [ "python", "main.py", "--listen" ]
 
 
 volumes:
