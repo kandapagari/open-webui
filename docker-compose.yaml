@@ -102,11 +102,12 @@ services:
     build:
       context: ./ComfyUI
       dockerfile: Dockerfile
-#    image: comfyui:master
+    image: ghcr.io/kandapagari/comfyui:master
     restart: unless-stopped
     pull_policy: always
     volumes:
       - ./ComfyUI/models:/code/models
+      - ./ComfyUI/custom_nodes:/code/custom_nodes
     ports:
       - 8188:8188
     environment:
@@ -125,7 +126,7 @@ services:
               count: ${OLLAMA_GPU_COUNT-all}
               capabilities:
                 - gpu
-    entrypoint: [ "python", "main.py", "--listen" ]
+    entrypoint: [ "python", "main.py", "--listen" , "--enable-manager"]
 
 
 volumes:
