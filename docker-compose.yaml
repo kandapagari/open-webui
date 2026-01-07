@@ -102,7 +102,7 @@ services:
     build:
       context: ./ComfyUI
       dockerfile: Dockerfile
-    image: ghcr.io/kandapagari/comfyui:master
+#    image: comfyui:master
     restart: unless-stopped
     pull_policy: always
     volumes:
